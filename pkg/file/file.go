@@ -82,12 +82,12 @@ func GetExtension(fileName string, contentType string) (string, error) {
 			return "", fmt.Errorf("error getting extension from content type: %v", err)
 		}
 
-		// Ensure that the extesion exists
+		// Ensure that the extension exists
 		if len(metaExtension) == 0 {
-			ext = metaExtension[0]
-		} else {
-			ext = ".html"
+			return "", fmt.Errorf("could not determine extension from content type: %s", contentType)
 		}
+
+		ext = metaExtension[0]
 
 		if ext == ".htm" {
 			ext = ".html"
