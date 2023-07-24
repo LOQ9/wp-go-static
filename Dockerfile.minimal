@@ -1,0 +1,12 @@
+FROM alpine:3.18
+
+RUN apk update && \
+  apk add --no-cache curl ca-certificates && \
+  rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+ADD wp-go-static /app/wp-go-static
+RUN chmod u+x /app/wp-go-static
+
+ENTRYPOINT [ "/app/wp-go-static" ]
