@@ -31,11 +31,13 @@ var RootCmd = &cobra.Command{
 func init() {
 	// Define command-line flags
 	RootCmd.PersistentFlags().String("dir", "dump", "directory to save downloaded files")
-	RootCmd.PersistentFlags().String("url", "https://wp-just-expertise.mstudio.work", "URL to scrape")
+	RootCmd.PersistentFlags().String("url", "", "URL to scrape")
+	RootCmd.PersistentFlags().String("cache", "", "Cache directory")
 
 	// Bind command-line flags to Viper
 	viper.BindPFlag("dir", RootCmd.PersistentFlags().Lookup("dir"))
 	viper.BindPFlag("url", RootCmd.PersistentFlags().Lookup("url"))
+	viper.BindPFlag("cache", RootCmd.PersistentFlags().Lookup("cache"))
 
 	// Execute root command
 	if err := RootCmd.Execute(); err != nil {
@@ -46,10 +48,13 @@ func init() {
 func rootCmdF(command *cobra.Command, args []string) error {
 	commandDir, _ := command.Flags().GetString("dir")
 	commandURL, _ := command.Flags().GetString("url")
+	cacheDir, _ := command.Flags().GetString("cache")
 
-	c := colly.NewCollector(
-		colly.CacheDir(".cache"),
-	)
+	c := colly.NewCollector()
+
+	if cacheDir != "" {
+		c.CacheDir = cacheDir
+	}
 
 	// Ignore SSL errors
 	c.WithTransport(&http.Transport{
