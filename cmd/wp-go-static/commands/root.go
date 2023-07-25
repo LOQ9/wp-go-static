@@ -95,6 +95,7 @@ func rootCmdF(command *cobra.Command, args []string) error {
 	scrape.domain = commandURL
 
 	if cacheDir != "" {
+		log.Println("Using cache directory", cacheDir)
 		scrape.c.CacheDir = cacheDir
 	}
 
