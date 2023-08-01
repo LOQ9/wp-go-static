@@ -71,6 +71,7 @@ func init() {
 	RootCmd.PersistentFlags().String("cache", "", "Cache directory")
 	RootCmd.PersistentFlags().Bool("parallel", false, "Fetch in parallel")
 	RootCmd.PersistentFlags().Bool("images", true, "Download images")
+	RootCmd.PersistentFlags().Bool("check-head", true, "Checks head")
 	RootCmd.MarkFlagRequired("url")
 
 	// Bind command-line flags to Viper
@@ -89,10 +90,15 @@ func rootCmdF(command *cobra.Command, args []string) error {
 	commandURL := viper.GetString("url")
 	cacheDir := viper.GetString("cache")
 	parallel := viper.GetBool("parallel")
+	checkHead := viper.GetBool("check-head")
 
 	scrape := NewScrape()
 
 	scrape.domain = commandURL
+
+	if checkHead {
+		scrape.c.CheckHead = true
+	}
 
 	if cacheDir != "" {
 		log.Println("Using cache directory", cacheDir)
@@ -153,6 +159,11 @@ func rootCmdF(command *cobra.Command, args []string) error {
 		}
 	})
 
+	// Create a callback on the XPath query searching for the URLs
+	scrape.c.OnXML("//sitemapindex/sitemap/loc", func(e *colly.XMLElement) {
+		scrape.visitURL(e.Text)
+	})
+
 	// Before making a request print "Visiting ..."
 	scrape.c.OnRequest(func(r *colly.Request) {
 		log.Println("Visiting", r.URL.String())
@@ -170,8 +181,21 @@ func rootCmdF(command *cobra.Command, args []string) error {
 		}
 	})
 
+	urlsToVisit := []string{
+		"robots.txt",
+		"sitemap.xml",
+		"favicon.ico",
+	}
+
+	for _, domain := range urlsToVisit {
+		err = scrape.c.Visit(scrape.domain + "/" + domain)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
 	// Start scraping
-	err = scrape.c.Visit(commandURL)
+	err = scrape.c.Visit(scrape.domain)
 
 	if err != nil {
 		return err
