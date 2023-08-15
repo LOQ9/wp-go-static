@@ -37,10 +37,23 @@ func (c *URLCache) Get(url string) bool {
 	return ok
 }
 
+type Config struct {
+	Dir        string `mapstructure:"dir"`
+	URL        string `mapstructure:"url"`
+	Cache      string `mapstructure:"cache"`
+	ReplaceURL string `mapstructure:"replace-url"`
+	Replace    bool   `mapstructure:"replace"`
+	Parallel   bool   `mapstructure:"parallel"`
+	Images     bool   `mapstructure:"images"`
+	CheckHead  bool   `mapstructure:"check-head"`
+}
+
 type Scrape struct {
 	urlCache *URLCache
 	c        *colly.Collector
 	domain   string
+	hostname string
+	config   Config
 }
 
 func NewScrape() *Scrape {
@@ -69,6 +82,8 @@ func init() {
 	RootCmd.PersistentFlags().String("dir", "dump", "directory to save downloaded files")
 	RootCmd.PersistentFlags().String("url", "", "URL to scrape")
 	RootCmd.PersistentFlags().String("cache", "", "Cache directory")
+	RootCmd.PersistentFlags().String("replace-url", "", "Replace with a specific url")
+	RootCmd.PersistentFlags().Bool("replace", true, "Replace url")
 	RootCmd.PersistentFlags().Bool("parallel", false, "Fetch in parallel")
 	RootCmd.PersistentFlags().Bool("images", true, "Download images")
 	RootCmd.PersistentFlags().Bool("check-head", true, "Checks head")
@@ -86,40 +101,35 @@ func init() {
 }
 
 func rootCmdF(command *cobra.Command, args []string) error {
-	commandDir := viper.GetString("dir")
-	commandURL := viper.GetString("url")
-	cacheDir := viper.GetString("cache")
-	parallel := viper.GetBool("parallel")
-	checkHead := viper.GetBool("check-head")
-
 	scrape := NewScrape()
+	viper.Unmarshal(&scrape.config)
 
-	scrape.domain = commandURL
+	scrape.domain = scrape.config.URL
 
-	if checkHead {
+	if scrape.config.CheckHead {
 		scrape.c.CheckHead = true
 	}
 
-	if cacheDir != "" {
-		log.Println("Using cache directory", cacheDir)
-		scrape.c.CacheDir = cacheDir
+	if scrape.config.Cache != "" {
+		log.Println("Using cache directory", scrape.config.Cache)
+		scrape.c.CacheDir = scrape.config.Cache
 	}
 
-	scrape.c.Async = parallel
+	scrape.c.Async = scrape.config.Parallel
 
 	// Use a custom TLS config to verify server certificates
 	scrape.c.WithTransport(&http.Transport{
 		TLSClientConfig: &tls.Config{},
 	})
 
-	parsedURL, err := url.Parse(commandURL)
+	parsedURL, err := url.Parse(scrape.config.URL)
 	if err != nil {
 		return err
 	}
-	domain := parsedURL.Hostname()
+	scrape.hostname = parsedURL.Hostname()
 
 	// Visit only pages that are part of the website
-	scrape.c.AllowedDomains = []string{domain}
+	scrape.c.AllowedDomains = []string{scrape.hostname}
 
 	// On every a element which has href attribute call callback
 	scrape.c.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -166,15 +176,23 @@ func rootCmdF(command *cobra.Command, args []string) error {
 
 	// Before making a request print "Visiting ..."
 	scrape.c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL.String())
+		switch r.Method {
+		case http.MethodGet:
+			log.Printf("Visiting: %s\n", r.URL.String())
+		case http.MethodHead:
+			log.Printf("Checking: %s\n", r.URL.String())
+		default:
+			log.Printf("Skipping [%s]: %s\n", r.Method, r.URL.String())
+		}
 	})
 
 	// On response
 	scrape.c.OnResponse(func(r *colly.Response) {
-		dir, fileName := file.HandleFile(r, commandDir)
-		r.Body = scrape.parseBody(r.Body)
+		rCopy := *r
+		dir, fileName := file.HandleFile(r, scrape.config.Dir)
+		rCopy.Body = scrape.parseBody(r.Body)
 
-		err := file.SaveFile(r, dir, fileName)
+		err := file.SaveFile(&rCopy, dir, fileName)
 		if err != nil {
 			log.Println(err)
 			return
@@ -250,18 +268,19 @@ func (s *Scrape) parseBody(body []byte) []byte {
 		s.visitURL(link)
 	}
 
-	optionList := []string{
-		fmt.Sprintf(`http://%s`, s.domain),
-		fmt.Sprintf(`http:\/\/%s`, s.domain),
-		fmt.Sprintf(`https://%s`, s.domain),
-		fmt.Sprintf(`https:\/\/%s`, s.domain),
-		s.domain,
-	}
+	if s.config.Replace {
+		optionList := []string{
+			fmt.Sprintf(`http://%s`, s.hostname),
+			fmt.Sprintf(`http:\/\/%s`, s.hostname),
+			fmt.Sprintf(`https://%s`, s.hostname),
+			fmt.Sprintf(`https:\/\/%s`, s.hostname),
+		}
 
-	for _, v := range optionList {
-		// Replace all occurrences of the base URL with a relative URL
-		replaceBody := strings.ReplaceAll(string(body), v, "")
-		body = []byte(replaceBody)
+		for _, option := range optionList {
+			// Replace all occurrences of the base URL with a relative URL
+			replaceBody := strings.ReplaceAll(string(body), option, s.config.ReplaceURL)
+			body = []byte(replaceBody)
+		}
 	}
 
 	return body
