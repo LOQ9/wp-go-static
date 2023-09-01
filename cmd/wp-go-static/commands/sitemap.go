@@ -2,22 +2,16 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 
+	"wp-go-static/internal/config"
 	goSitemap "wp-go-static/pkg/sitemap"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
-
-type SitemapConfig struct {
-	Dir         string `mapstructure:"dir"`
-	URL         string `mapstructure:"url"`
-	ReplaceURL  string `mapstructure:"replace-url"`
-	SitemapFile string `mapstructure:"sitemap-file"`
-}
 
 // SitemapCmd ...
 var SitemapCmd = &cobra.Command{
@@ -26,28 +20,31 @@ var SitemapCmd = &cobra.Command{
 	RunE:  sitemapCmdF,
 }
 
+const (
+	bindFlagSitemapPrefix = "sitemap"
+)
+
 func init() {
 	// Define command-line flags
 	SitemapCmd.PersistentFlags().String("dir", "dump", "directory to save downloaded files")
 	SitemapCmd.PersistentFlags().String("url", "", "URL to scrape")
 	SitemapCmd.PersistentFlags().String("replace-url", "", "Replace with a specific url")
-	SitemapCmd.PersistentFlags().String("sitemap-file", "sitemap.xml", "Output sitemap file name")
-	SitemapCmd.MarkFlagRequired("url")
+	SitemapCmd.PersistentFlags().String("file", "sitemap.xml", "Output sitemap file name")
 
 	// Bind command-line flags to Viper
-	err := viper.BindPFlags(SitemapCmd.PersistentFlags())
-	if err != nil {
-		log.Fatal(err)
-	}
+	SitemapCmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+		bindFlag := fmt.Sprintf("%s.%s", bindFlagSitemapPrefix, flag.Name)
+		viper.BindPFlag(bindFlag, SitemapCmd.PersistentFlags().Lookup(flag.Name))
+	})
 
 	RootCmd.AddCommand(SitemapCmd)
 }
 
 func sitemapCmdF(command *cobra.Command, args []string) error {
-	sitemapConfig := SitemapConfig{}
-	viper.Unmarshal(&sitemapConfig)
+	config := config.Config{}
+	viper.Unmarshal(&config)
 
-	smap, err := goSitemap.Get(sitemapConfig.URL, nil)
+	smap, err := goSitemap.Get(config.Sitemap.URL, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -55,8 +52,8 @@ func sitemapCmdF(command *cobra.Command, args []string) error {
 	for i := range smap.URL {
 		// Replace the URL with the url from the replace-url argument
 		// Only with the URL part, persist the URL path and query
-		if sitemapConfig.ReplaceURL != "" {
-			currentURL, _ := url.Parse(sitemapConfig.URL)
+		if config.Sitemap.ReplaceURL != "" {
+			currentURL, _ := url.Parse(config.Sitemap.URL)
 
 			optionList := []string{
 				fmt.Sprintf(`http://%s`, currentURL.Host),
@@ -70,7 +67,7 @@ func sitemapCmdF(command *cobra.Command, args []string) error {
 					fmt.Println("Index out of range for smap.URL")
 					break
 				}
-				smap.URL[i].Loc = strings.ReplaceAll(string(smap.URL[i].Loc), option, sitemapConfig.ReplaceURL)
+				smap.URL[i].Loc = strings.ReplaceAll(string(smap.URL[i].Loc), option, config.Sitemap.ReplaceURL)
 
 				// for j := range smap.Image {
 				// 	if i >= len(smap.URL) {
@@ -96,9 +93,9 @@ func sitemapCmdF(command *cobra.Command, args []string) error {
 	fmt.Printf("%s\n", printSmap)
 
 	// Write the Sitemap to a file
-	if sitemapConfig.SitemapFile != "" {
-		fmt.Printf("Writing sitemap to %s/%s\n", sitemapConfig.Dir, sitemapConfig.SitemapFile)
-		return smap.Save(sitemapConfig.Dir, sitemapConfig.SitemapFile)
+	if config.Sitemap.File != "" {
+		fmt.Printf("Writing sitemap to %s/%s\n", config.Sitemap.Dir, config.Sitemap.File)
+		return smap.Save(config.Sitemap.Dir, config.Sitemap.File)
 	}
 
 	return nil

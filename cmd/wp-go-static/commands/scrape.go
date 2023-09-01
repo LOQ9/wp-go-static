@@ -8,57 +8,28 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"sync"
 	"wp-go-static/pkg/file"
 
 	"github.com/gocolly/colly"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"wp-go-static/internal/cache"
+	"wp-go-static/internal/config"
 )
 
-// URLCache is a struct to hold the visited URLs
-type URLCache struct {
-	mu   sync.Mutex
-	urls map[string]bool
-}
-
-// Add adds a URL to the cache
-func (c *URLCache) Add(url string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.urls[url] = true
-}
-
-// Get checks if a URL is in the cache
-func (c *URLCache) Get(url string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	_, ok := c.urls[url]
-	return ok
-}
-
-type ScrapeConfig struct {
-	Dir        string `mapstructure:"dir"`
-	URL        string `mapstructure:"url"`
-	Cache      string `mapstructure:"cache"`
-	ReplaceURL string `mapstructure:"replace-url"`
-	Replace    bool   `mapstructure:"replace"`
-	Parallel   bool   `mapstructure:"parallel"`
-	Images     bool   `mapstructure:"images"`
-	CheckHead  bool   `mapstructure:"check-head"`
-}
-
 type Scrape struct {
-	urlCache *URLCache
+	urlCache *cache.URLCache
 	c        *colly.Collector
 	domain   string
 	hostname string
-	config   ScrapeConfig
+	config   config.Config
 }
 
 func NewScrape() *Scrape {
 	return &Scrape{
-		urlCache: &URLCache{urls: make(map[string]bool)},
+		urlCache: &cache.URLCache{URLs: make(map[string]bool)},
 		c:        colly.NewCollector(),
 	}
 }
@@ -70,6 +41,10 @@ var ScrapeCmd = &cobra.Command{
 	RunE:  scrapeCmdF,
 }
 
+const (
+	bindFlagScrapePrefix = "scrape"
+)
+
 func init() {
 	// Define command-line flags
 	ScrapeCmd.PersistentFlags().String("dir", "dump", "directory to save downloaded files")
@@ -80,13 +55,12 @@ func init() {
 	ScrapeCmd.PersistentFlags().Bool("parallel", false, "Fetch in parallel")
 	ScrapeCmd.PersistentFlags().Bool("images", true, "Download images")
 	ScrapeCmd.PersistentFlags().Bool("check-head", true, "Checks head")
-	ScrapeCmd.MarkFlagRequired("url")
+	// ScrapeCmd.MarkPersistentFlagRequired("url")
 
-	// Bind command-line flags to Viper
-	err := viper.BindPFlags(ScrapeCmd.PersistentFlags())
-	if err != nil {
-		log.Fatal(err)
-	}
+	ScrapeCmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+		bindFlag := fmt.Sprintf("%s.%s", bindFlagScrapePrefix, flag.Name)
+		viper.BindPFlag(bindFlag, ScrapeCmd.PersistentFlags().Lookup(flag.Name))
+	})
 
 	RootCmd.AddCommand(ScrapeCmd)
 }
@@ -95,25 +69,25 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 	scrape := NewScrape()
 	viper.Unmarshal(&scrape.config)
 
-	scrape.domain = scrape.config.URL
+	scrape.domain = scrape.config.Scrape.URL
 
-	if scrape.config.CheckHead {
+	if scrape.config.Scrape.CheckHead {
 		scrape.c.CheckHead = true
 	}
 
-	if scrape.config.Cache != "" {
-		log.Println("Using cache directory", scrape.config.Cache)
-		scrape.c.CacheDir = scrape.config.Cache
+	if scrape.config.Scrape.Cache != "" {
+		log.Println("Using cache directory", scrape.config.Scrape.Cache)
+		scrape.c.CacheDir = scrape.config.Scrape.Cache
 	}
 
-	scrape.c.Async = scrape.config.Parallel
+	scrape.c.Async = scrape.config.Scrape.Parallel
 
 	// Use a custom TLS config to verify server certificates
 	scrape.c.WithTransport(&http.Transport{
 		TLSClientConfig: &tls.Config{},
 	})
 
-	parsedURL, err := url.Parse(scrape.config.URL)
+	parsedURL, err := url.Parse(scrape.config.Scrape.URL)
 	if err != nil {
 		return err
 	}
@@ -175,7 +149,7 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 	// On response
 	scrape.c.OnResponse(func(r *colly.Response) {
 		rCopy := *r
-		dir, fileName := file.HandleFile(r, scrape.config.Dir)
+		dir, fileName := file.HandleFile(r, scrape.config.Scrape.Dir)
 		rCopy.Body = scrape.parseBody(r.Body)
 
 		err := file.SaveFile(&rCopy, dir, fileName)
@@ -187,7 +161,6 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 
 	urlsToVisit := []string{
 		"robots.txt",
-		// "sitemap.xml",
 		"favicon.ico",
 	}
 
@@ -224,7 +197,7 @@ func (s *Scrape) visitURL(link string) {
 	}
 
 	if u.Scheme == "" || u.Host == "" {
-		log.Printf("Invalid URL %s", link)
+		log.Printf("Invalid URL: %s", link)
 		return
 	}
 
@@ -254,7 +227,7 @@ func (s *Scrape) parseBody(body []byte) []byte {
 		s.visitURL(link)
 	}
 
-	if s.config.Replace {
+	if s.config.Scrape.Replace {
 		optionList := []string{
 			fmt.Sprintf(`http://%s`, s.hostname),
 			fmt.Sprintf(`http:\/\/%s`, s.hostname),
@@ -264,7 +237,7 @@ func (s *Scrape) parseBody(body []byte) []byte {
 
 		for _, option := range optionList {
 			// Replace all occurrences of the base URL with a relative URL
-			replaceBody := strings.ReplaceAll(string(body), option, s.config.ReplaceURL)
+			replaceBody := strings.ReplaceAll(string(body), option, s.config.Scrape.ReplaceURL)
 			body = []byte(replaceBody)
 		}
 	}
