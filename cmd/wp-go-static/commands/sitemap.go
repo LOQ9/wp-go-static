@@ -13,10 +13,10 @@ import (
 )
 
 type SitemapConfig struct {
-	Dir        string `mapstructure:"dir"`
-	URL        string `mapstructure:"url"`
-	ReplaceURL string `mapstructure:"replace-url"`
-	File       string `mapstructure:"file"`
+	Dir         string `mapstructure:"dir"`
+	URL         string `mapstructure:"url"`
+	ReplaceURL  string `mapstructure:"replace-url"`
+	SitemapFile string `mapstructure:"sitemap-file"`
 }
 
 // SitemapCmd ...
@@ -31,7 +31,7 @@ func init() {
 	SitemapCmd.PersistentFlags().String("dir", "dump", "directory to save downloaded files")
 	SitemapCmd.PersistentFlags().String("url", "", "URL to scrape")
 	SitemapCmd.PersistentFlags().String("replace-url", "", "Replace with a specific url")
-	SitemapCmd.PersistentFlags().String("file", "sitemap.xml", "Output sitemap file name")
+	SitemapCmd.PersistentFlags().String("sitemap-file", "sitemap.xml", "Output sitemap file name")
 	SitemapCmd.MarkFlagRequired("url")
 
 	// Bind command-line flags to Viper
@@ -96,9 +96,9 @@ func sitemapCmdF(command *cobra.Command, args []string) error {
 	fmt.Printf("%s\n", printSmap)
 
 	// Write the Sitemap to a file
-	if sitemapConfig.File != "" {
-		fmt.Printf("Writing sitemap to %s/%s\n", sitemapConfig.Dir, sitemapConfig.File)
-		return smap.Save(sitemapConfig.Dir, sitemapConfig.File)
+	if sitemapConfig.SitemapFile != "" {
+		fmt.Printf("Writing sitemap to %s/%s\n", sitemapConfig.Dir, sitemapConfig.SitemapFile)
+		return smap.Save(sitemapConfig.Dir, sitemapConfig.SitemapFile)
 	}
 
 	return nil
