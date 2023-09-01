@@ -48,6 +48,8 @@ dockers:
     image_templates:
     - "ghcr.io/loq9/{{ .ProjectName }}:{{ .Tag }}"
     - "ghcr.io/loq9/{{ .ProjectName }}:latest"
+    - "loq9/{{ .ProjectName }}:{{ .Tag }}"
+    - "loq9/{{ .ProjectName }}:latest"
     dockerfile: "Dockerfile.minimal"
     build_flag_templates:
     - --label=org.opencontainers.image.title={{ .ProjectName }}
