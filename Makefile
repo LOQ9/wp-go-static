@@ -47,3 +47,4 @@ docker:
 
 clean:
 	rm -rf bin
+	rm -rf dump
