@@ -49,37 +49,23 @@ func sitemapCmdF(command *cobra.Command, args []string) error {
 		fmt.Println(err)
 	}
 
-	for i := range smap.URL {
-		// Replace the URL with the url from the replace-url argument
-		// Only with the URL part, persist the URL path and query
-		if config.Sitemap.ReplaceURL != "" {
-			currentURL, _ := url.Parse(config.Sitemap.URL)
+	if config.Sitemap.ReplaceURL != "" {
+		currentURL, _ := url.Parse(config.Sitemap.URL)
+		host := currentURL.Host
+		optionList := []string{
+			"http://" + host,
+			"http:\\/\\/" + host,
+			"https://" + host,
+			"https:\\/\\/" + host,
+		}
 
-			optionList := []string{
-				fmt.Sprintf(`http://%s`, currentURL.Host),
-				fmt.Sprintf(`http:\/\/%s`, currentURL.Host),
-				fmt.Sprintf(`https://%s`, currentURL.Host),
-				fmt.Sprintf(`https:\/\/%s`, currentURL.Host),
-			}
-
+		for i := range smap.URL {
 			for _, option := range optionList {
-				if i >= len(smap.URL) {
-					fmt.Println("Index out of range for smap.URL")
-					break
-				}
-				smap.URL[i].Loc = strings.ReplaceAll(string(smap.URL[i].Loc), option, config.Sitemap.ReplaceURL)
+				smap.URL[i].Loc = strings.ReplaceAll(smap.URL[i].Loc, option, config.Sitemap.ReplaceURL)
 
-				// for j := range smap.Image {
-				// 	if i >= len(smap.URL) {
-				// 		fmt.Println("Index out of range for smap.URL")
-				// 		break
-				// 	}
-				// 	if j >= len(smap.URL[i].Image) {
-				// 		fmt.Println("Index out of range for smap.URL[i].Image")
-				// 		break
-				// 	}
-				// 	smap.URL[i].Image[j].Loc = strings.ReplaceAll(string(smap.URL[i].Image[j].Loc), option, sitemapConfig.ReplaceURL)
-				// }
+				for j := range smap.URL[i].Image {
+					smap.URL[i].Image[j].Loc = strings.ReplaceAll(smap.URL[i].Image[j].Loc, option, config.Sitemap.ReplaceURL)
+				}
 			}
 		}
 	}

@@ -23,12 +23,12 @@ type parts struct {
 
 // Sitemap is a structure of <sitemap>
 type Sitemap struct {
-	// Xsi            string   `xml:"xsi,attr"`
-	// Image          string   `xml:"image,attr"`
-	// SchemaLocation string   `xml:"schemaLocation,attr"`
-	// Xmlns          string   `xml:"xmlns,attr"`
-	XMLName xml.Name `xml:"urlset"`
-	URL     []URL    `xml:"url"`
+	Xsi            string   `xml:"xsi,attr"`
+	Image          string   `xml:"image,attr"`
+	SchemaLocation string   `xml:"schemaLocation,attr"`
+	Xmlns          string   `xml:"xmlns,attr"`
+	XMLName        xml.Name `xml:"urlset"`
+	URL            []URL    `xml:"url"`
 }
 
 // URL is a structure of <url> in <sitemap>
@@ -37,7 +37,7 @@ type URL struct {
 	LastMod    string  `xml:"lastmod,omitempty"`
 	ChangeFreq string  `xml:"changefreq,omitempty"`
 	Priority   float32 `xml:"priority,omitempty"`
-	// Image      []Image `xml:"image,omitempty"`
+	Image      []Image `xml:"image,omitempty"`
 }
 
 // Image is a structure of <image> in <url>
