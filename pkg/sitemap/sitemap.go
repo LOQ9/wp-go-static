@@ -37,7 +37,7 @@ type URL struct {
 	LastMod    string  `xml:"lastmod,omitempty"`
 	ChangeFreq string  `xml:"changefreq,omitempty"`
 	Priority   float32 `xml:"priority,omitempty"`
-	Image      []Image `xml:"image,omitempty"`
+	// Image      []Image `xml:"image,omitempty"`
 }
 
 // Image is a structure of <image> in <url>

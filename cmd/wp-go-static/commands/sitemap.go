@@ -63,9 +63,9 @@ func sitemapCmdF(command *cobra.Command, args []string) error {
 			for _, option := range optionList {
 				smap.URL[i].Loc = strings.ReplaceAll(smap.URL[i].Loc, option, config.Sitemap.ReplaceURL)
 
-				for j := range smap.URL[i].Image {
-					smap.URL[i].Image[j].Loc = strings.ReplaceAll(smap.URL[i].Image[j].Loc, option, config.Sitemap.ReplaceURL)
-				}
+				// for j := range smap.URL[i].Image {
+				// 	smap.URL[i].Image[j].Loc = strings.ReplaceAll(smap.URL[i].Image[j].Loc, option, config.Sitemap.ReplaceURL)
+				// }
 			}
 		}
 	}
