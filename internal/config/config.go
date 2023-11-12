@@ -3,6 +3,7 @@ package config
 type Config struct {
 	Scrape  ScrapeConfig  `mapstructure:"scrape"`
 	Sitemap SitemapConfig `mapstructure:"sitemap"`
+	Robots  RobotsConfig  `mapstructure:"robots"`
 }
 
 type SitemapConfig struct {
@@ -21,4 +22,11 @@ type ScrapeConfig struct {
 	Parallel   bool   `mapstructure:"parallel"`
 	Images     bool   `mapstructure:"images"`
 	CheckHead  bool   `mapstructure:"check-head"`
+}
+
+type RobotsConfig struct {
+	Dir        string `mapstructure:"dir"`
+	URL        string `mapstructure:"url"`
+	ReplaceURL string `mapstructure:"replace-url"`
+	File       string `mapstructure:"file"`
 }

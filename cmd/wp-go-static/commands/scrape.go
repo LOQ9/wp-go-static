@@ -160,7 +160,6 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 	})
 
 	urlsToVisit := []string{
-		"robots.txt",
 		"favicon.ico",
 	}
 
