@@ -51,6 +51,7 @@ func init() {
 	ScrapeCmd.PersistentFlags().String("url", "", "URL to scrape")
 	ScrapeCmd.PersistentFlags().String("cache", "", "Cache directory")
 	ScrapeCmd.PersistentFlags().String("replace-url", "", "Replace with a specific url")
+	ScrapeCmd.PersistentFlags().StringSlice("extra-pages", []string{}, "Extra pages to scrape")
 	ScrapeCmd.PersistentFlags().Bool("replace", true, "Replace url")
 	ScrapeCmd.PersistentFlags().Bool("parallel", false, "Fetch in parallel")
 	ScrapeCmd.PersistentFlags().Bool("images", true, "Download images")
@@ -95,6 +96,11 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 
 	// Visit only pages that are part of the website
 	scrape.c.AllowedDomains = []string{scrape.hostname}
+
+	for _, extraPage := range scrape.config.Scrape.ExtraPages {
+		log.Println("Visiting Extra Page:", extraPage)
+		scrape.visitURL(extraPage)
+	}
 
 	// On every a element which has href attribute call callback
 	scrape.c.OnHTML("a[href]", func(e *colly.HTMLElement) {

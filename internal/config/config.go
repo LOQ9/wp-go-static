@@ -14,14 +14,15 @@ type SitemapConfig struct {
 }
 
 type ScrapeConfig struct {
-	Dir        string `mapstructure:"dir"`
-	URL        string `mapstructure:"url"`
-	Cache      string `mapstructure:"cache"`
-	ReplaceURL string `mapstructure:"replace-url"`
-	Replace    bool   `mapstructure:"replace"`
-	Parallel   bool   `mapstructure:"parallel"`
-	Images     bool   `mapstructure:"images"`
-	CheckHead  bool   `mapstructure:"check-head"`
+	Dir        string   `mapstructure:"dir"`
+	URL        string   `mapstructure:"url"`
+	Cache      string   `mapstructure:"cache"`
+	ReplaceURL string   `mapstructure:"replace-url"`
+	Replace    bool     `mapstructure:"replace"`
+	Parallel   bool     `mapstructure:"parallel"`
+	Images     bool     `mapstructure:"images"`
+	CheckHead  bool     `mapstructure:"check-head"`
+	ExtraPages []string `mapstructure:"extra-pages"`
 }
 
 type RobotsConfig struct {
