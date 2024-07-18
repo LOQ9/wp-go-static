@@ -1,5 +1,5 @@
 # Build
-FROM golang:1.20-alpine AS build
+FROM golang:1.22-alpine AS build
 
 # Install dependencies
 RUN apk update && apk upgrade && apk add --no-cache \
@@ -12,7 +12,7 @@ COPY . .
 RUN make build-linux
 
 # Final container
-FROM alpine:3.18
+FROM alpine:3.20
 
 WORKDIR /app
 

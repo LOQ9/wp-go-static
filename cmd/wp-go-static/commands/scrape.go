@@ -57,6 +57,8 @@ func init() {
 	ScrapeCmd.PersistentFlags().Bool("images", true, "Download images")
 	ScrapeCmd.PersistentFlags().Bool("check-head", true, "Checks head")
 	// ScrapeCmd.MarkPersistentFlagRequired("url")
+	// Allow passing additional headers as map[string]string
+	ScrapeCmd.PersistentFlags().StringToString("headers", map[string]string{}, "Additional headers")
 
 	ScrapeCmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
 		bindFlag := fmt.Sprintf("%s.%s", bindFlagScrapePrefix, flag.Name)
@@ -95,7 +97,7 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 	scrape.hostname = parsedURL.Hostname()
 
 	// Visit only pages that are part of the website
-	scrape.c.AllowedDomains = []string{scrape.hostname}
+	scrape.c.AllowedDomains = []string{parsedURL.Host}
 
 	for _, extraPage := range scrape.config.Scrape.ExtraPages {
 		log.Println("Visiting Extra Page:", extraPage)
@@ -142,6 +144,11 @@ func scrapeCmdF(command *cobra.Command, args []string) error {
 
 	// Before making a request print "Visiting ..."
 	scrape.c.OnRequest(func(r *colly.Request) {
+		// Set headers
+		for headerName, headerValue := range scrape.config.Scrape.Headers {
+			r.Headers.Set(headerName, headerValue)
+		}
+
 		switch r.Method {
 		case http.MethodGet:
 			log.Printf("Visiting: %s\n", r.URL.String())

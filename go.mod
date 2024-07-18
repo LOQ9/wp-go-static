@@ -1,6 +1,6 @@
 module wp-go-static
 
-go 1.20
+go 1.22
 
 require (
 	github.com/gocolly/colly v1.2.0
