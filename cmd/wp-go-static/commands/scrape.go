@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"wp-go-static/pkg/file"
 
@@ -17,6 +16,7 @@ import (
 
 	"wp-go-static/internal/cache"
 	"wp-go-static/internal/config"
+	"wp-go-static/internal/html"
 )
 
 type Scrape struct {
@@ -228,15 +228,15 @@ func (s *Scrape) visitURL(link string) {
 }
 
 func (s *Scrape) parseBody(body []byte) []byte {
-	cssUrls := regexp.MustCompile(`url\((https?://[^\s]+)\)`).FindAllStringSubmatch(string(body), -1)
+	var urlsToVisit []string
+	htmlParser := html.NewHTML(string(body))
 
-	// Download each referenced file if it hasn't been visited before
-	for _, cssUrl := range cssUrls {
-		link := strings.Trim(cssUrl[1], "'\"")
-		if link == "" {
-			continue
-		}
-		s.visitURL(link)
+	urlsToVisit = append(urlsToVisit, htmlParser.ExtractImageURLs(htmlParser.ExtractCSS())...)
+	urlsToVisit = append(urlsToVisit, htmlParser.ExtractImageURLs(htmlParser.ExtractURLs())...)
+
+	// Download each one if it hasn't been visited before
+	for _, url := range urlsToVisit {
+		s.visitURL(url)
 	}
 
 	if s.config.Scrape.Replace {
